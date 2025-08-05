@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>🐍 Rắn ăn cấp số v2</title>
+<link href="https://fonts.googleapis.com/css?family=Montserrat:600,400&display=swap" rel="stylesheet">
+<style>
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background: linear-gradient(120deg, #e0eafc 0%, #cfdef3 100%);
+    margin: 0;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 440px;
+    margin: 36px auto 0 auto;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.13);
+    padding: 32px 28px 20px 28px;
+    text-align: center;
+    animation: fadeIn .9s;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(40px);}
+    to   { opacity: 1; transform: translateY(0);}
+  }
+  h2 {
+    font-size: 2rem;
+    color: #2b5876;
+    letter-spacing: 1px;
+    margin-bottom: 18px;
+    font-weight: 700;
+    text-shadow: 1px 2px 0 #e0eafc;
+  }
+  #seqInfo {
+    font-size: 19px;
+    font-weight: 600;
+    background: linear-gradient(90deg, #ffe29f 0%, #ffa99f 100%);
+    color: #a23d00;
+    border-radius: 10px;
+    padding: 8px 0;
+    margin-bottom: 13px;
+    box-shadow: 0 2px 8px 0 rgba(255,180,100,0.10);
+  }
+  .options {
+    background: #f4f8fb;
+    border-radius: 10px;
+    padding: 11px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px 0 rgba(52, 85, 174, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px 12px;
+    flex-wrap: wrap;
+    font-size: 16px;
+  }
+  select, button {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1rem;
+    border-radius: 7px;
+    border: 1.5px solid #b2b8c6;
+    padding: 6px 15px;
+    margin: 0 5px;
+    outline: none;
+    background: #f9fafc;
+    transition: border .2s;
+    box-shadow: 0 1px 6px 0 rgba(52, 85, 174, 0.04);
+    cursor: pointer;
+  }
+  select:focus, button:focus {
+    border-color: #6f9ce8;
+    background: #fff;
+  }
+  button {
+    background: linear-gradient(90deg, #5e8eff 0%, #6fd6ff 100%) !important;
+    color: #fff !important;
+    border: none;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    border-radius: 7px;
+    box-shadow: 0 2px 12px 0 rgba(94,142,255,0.11);
+    margin-left: 8px;
+    margin-top: 3px;
+    padding: 8px 24px;
+    transition: background 0.18s, box-shadow 0.19s, transform 0.12s;
+    display: inline-block;
+    min-width: 140px;
+  }
+  button:hover {
+    background: linear-gradient(90deg, #6fd6ff 0%, #5e8eff 100%) !important;
+    box-shadow: 0 4px 16px 0 rgba(94,142,255,0.15);
+    transform: translateY(-2px) scale(1.03);
+  }
+  canvas {
+    background: #fff;
+    border:2.5px solid #5e8eff;
+    margin-top: 16px;
+    border-radius: 15px;
+    box-shadow: 0 5px 18px 0 rgba(94,142,255, .12);
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #score {
+    margin-top: 10px;
+    font-size: 23px;
+    font-weight: 800;
+    color: #ff9f43;
+    letter-spacing: 1.2px;
+    text-shadow: 1px 1px 0 #fff3e0;
+  }
+  #status {
+    font-weight: 700;
+    font-size: 20px;
+    color: #28527a;
+    margin-top: 18px;
+    min-height: 38px;
+    letter-spacing: 0.3px;
+  }
+  @media (max-width: 600px) {
+    .container {
+      max-width: 99vw;
+      padding: 10px 2vw 5vw 2vw;
+    }
+    canvas {max-width: 96vw; height: auto;}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>🐍 Rắn ăn cấp số cộng / nhân</h2>
+  <div id="seqInfo"></div>
+  <div class="options">
+    Tốc độ:
+    <select id="speed" onchange="updateSpeed()" onkeydown="event.preventDefault()">
+      <option value="140">Rất chậm</option>
+      <option value="100" selected>Chậm</option>
+      <option value="70">Trung bình</option>
+      <option value="40">Nhanh</option>
+    </select>
+    |
+    Cho phép chạm tường:
+    <select id="wall">
+      <option value="no" selected>Không</option>
+      <option value="yes">Có</option>
+    </select>
+    <button onclick="startGame()">🎮 Bắt đầu chơi</button>
+  </div>
+  <canvas id="game" width="400" height="400"></canvas>
+  <div id="score">Điểm: 0</div>
+  <p id="status"></p>
+</div>
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const gridSize=20;
+const tileCount=canvas.width/gridSize;
+
+let snake=[];
+let dx=1,dy=0;
+let allowWall=false;
+let gameInterval=null;
+
+let seqType, a1, diff; // sequence parameters
+let nextVal;           // next correct number
+let foods=[];          // array of {x,y,val,correct}
+let score=0;
+
+function randomInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+
+function initSequence(){
+  seqType = Math.random()<0.5?"AP":"GP";
+  a1 = randomInt(1,5);
+  diff = seqType==="AP"? randomInt(1,4) : randomInt(2,3);
+  nextVal = a1;
+  const info = seqType==="AP" ?
+     `Cấp số cộng: a₁ = ${a1}, d = ${diff}` :
+     `Cấp số nhân: a₁ = ${a1}, r = ${diff}`;
+  document.getElementById("seqInfo").innerText = info;
+}
+
+function placeOne(value,correct){
+  let pos;
+  do{
+    pos={x:randomInt(0,tileCount-1),y:randomInt(0,tileCount-1)};
+  }while(snake.some(s=>s.x===pos.x&&s.y===pos.y)||foods.some(f=>f&&f.x===pos.x&&f.y===pos.y));
+  return {...pos,val:value,correct};
+}
+
+function placeFoods(){
+  foods=[];
+  foods.push(placeOne(nextVal,true));
+  let decoys=randomInt(0,2);
+  while(decoys--){
+    let val;
+    do{
+      const offset = randomInt(1,2)*(Math.random()<0.5?-1:1);
+      val = nextVal + offset;
+    }while(val<=0 || val===nextVal || foods.some(f=>f.val===val));
+    foods.push(placeOne(val,false));
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // draw snake (gradient head)
+  for (let i = 0; i < snake.length; ++i) {
+    if (i === 0) {
+      let grad = ctx.createLinearGradient(snake[i].x*gridSize, snake[i].y*gridSize, (snake[i].x+1)*gridSize, (snake[i].y+1)*gridSize);
+      grad.addColorStop(0, '#36d1c4');
+      grad.addColorStop(1, '#5e8eff');
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = "#6fd6ff";
+    }
+    ctx.fillRect(snake[i].x*gridSize+2,snake[i].y*gridSize+2,gridSize-4,gridSize-4);
+  }
+  // draw foods (all blue, no circle)
+  ctx.fillStyle = "#3578e5";
+  ctx.font = "bold 16px Montserrat, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  foods.forEach(f => {
+    ctx.fillText(f.val.toString(), f.x * gridSize + gridSize / 2, f.y * gridSize + gridSize / 2 + 1);
+  });
+}
+
+function updateScore() {
+  document.getElementById("score").innerText = "Điểm: " + score;
+}
+
+function update(){
+  let head={x:snake[0].x+dx,y:snake[0].y+dy};
+  if(allowWall){
+    head.x=(head.x+tileCount)%tileCount;
+    head.y=(head.y+tileCount)%tileCount;
+  }else{
+    if(head.x<0||head.x>=tileCount||head.y<0||head.y>=tileCount){
+      return gameOver("💥 Đâm tường!");
+    }
+  }
+  if(snake.some((s,i)=>i>0&&s.x===head.x&&s.y===head.y)) return gameOver("💥 Đụng trúng chính mình!");
+  snake.unshift(head);
+  const foodIdx = foods.findIndex(f=>f.x===head.x&&f.y===head.y);
+  if(foodIdx>-1){
+    const food=foods[foodIdx];
+    if(!food.correct) return gameOver("💀 Ăn sai số!");
+    nextVal = seqType==="AP"? nextVal+diff : nextVal*diff;
+    score++;
+    updateScore();
+    placeFoods();
+    document.getElementById("status").innerText="👍 Ăn đúng "+food.val;
+  }else{
+    snake.pop();
+  }
+  draw();
+}
+
+// Ngăn cuộn trang khi bấm phím mũi tên
+document.addEventListener("keydown", e => {
+  if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+    e.preventDefault();
+  }
+  if(e.key==="ArrowUp"&&dy!==1){dx=0;dy=-1;}
+  else if(e.key==="ArrowDown"&&dy!==-1){dx=0;dy=1;}
+  else if(e.key==="ArrowLeft"&&dx!==1){dx=-1;dy=0;}
+  else if(e.key==="ArrowRight"&&dx!==-1){dx=1;dy=0;}
+});
+
+function startGame(){
+  clearInterval(gameInterval);
+  initSequence();
+  const spd=parseInt(document.getElementById("speed").value);
+  allowWall = document.getElementById("wall").value==="yes";
+  snake=[{x:10,y:10}];dx=1;dy=0;
+  placeFoods();
+  score = 0;
+  updateScore();
+  draw();
+  gameInterval=setInterval(update,spd);
+  document.getElementById("status").innerText="👉 Bắt đầu!";
+}
+
+function updateSpeed(){
+  if(gameInterval){
+    clearInterval(gameInterval);
+    gameInterval=setInterval(update,parseInt(document.getElementById("speed").value));
+  }
+}
+
+function gameOver(msg){
+  clearInterval(gameInterval);
+  gameInterval=null;
+  document.getElementById("status").innerText=msg+" ⛔ Kết thúc. Tổng điểm: " + score;
+}
+
+</script>
+</body>
+</html>
